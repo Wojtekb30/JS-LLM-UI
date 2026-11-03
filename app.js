@@ -298,14 +298,14 @@
     const chat = currentChat();
     if (!chat || !chat.messages.length) {
       const welcome = document.createElement("div"); welcome.className = "welcome";
-      const icon = document.createElement("div"); icon.className = "welcome-icon"; icon.textContent = "✳";
+      const icon = document.createElement("div"); icon.className = "welcome-icon"; icon.textContent = "⚙";
       const heading = document.createElement("h1"); heading.textContent = "What would you like to explore?";
       const description = document.createElement("p"); description.textContent = "Choose a model, add its API key in settings, and start a conversation. Your chats stay encrypted in this browser.";
       welcome.append(icon, heading, description); elements.messages.append(welcome); return;
     }
     for (const message of chat.messages) {
       const wrapper = document.createElement("article"); wrapper.className = `message ${message.role}${message.error ? " error" : ""}`;
-      const avatar = document.createElement("div"); avatar.className = "avatar"; avatar.textContent = message.role === "user" ? "Y" : "✳";
+      const avatar = document.createElement("div"); avatar.className = "avatar"; avatar.textContent = message.role === "user" ? "Y" : "⚙";
       const content = document.createElement("div"); content.className = "message-content";
       const role = document.createElement("div"); role.className = "message-role"; role.textContent = message.role === "user" ? "You" : message.error ? "Error" : "Assistant";
       const text = document.createElement("div"); text.className = "message-text";
