@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https: http:; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101116">
+  <title>JS-LLM-UI — Private chat</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app" id="app" inert>
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">✳</span><span>JS-LLM-UI</span></div>
+      <button class="new-chat" id="newChat"><span>＋</span> New conversation</button>
+      <div class="section-label">Your chats</div>
+      <div class="chat-list" id="chatList"></div>
+      <div class="sidebar-bottom">
+        <div class="vault-state"><span class="lock-dot"></span><span>Encrypted local vault</span></div>
+        <button class="secondary-button" id="openSettings">⚙ &nbsp; API keys &amp; settings</button>
+        <button class="secondary-button" id="lockVault">♧ &nbsp; Lock vault</button>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div class="model-controls">
+          <div class="select-wrap"><select id="providerSelect" aria-label="Provider"><option value="openai">OpenAI</option><option value="gemini">Google Gemini</option><option value="ollama" disabled>Ollama (disabled)</option></select></div>
+          <div class="select-wrap"><select id="modelSelect" aria-label="Model"></select></div>
+        </div>
+        <div class="topbar-brand"><span class="brand-mark">✳</span> JS-LLM-UI</div>
+        <div class="top-actions">
+          <button class="icon-button" id="mobileNewChat" aria-label="New conversation" title="New conversation">＋</button>
+          <button class="icon-button" id="toggleSidebar" aria-label="Show conversations" title="Conversations">☰</button>
+          <button class="icon-button" id="mobileSettings" aria-label="API keys and settings" title="API keys and settings">⚙</button>
+          <button class="icon-button" id="mobileLock" aria-label="Lock vault" title="Lock vault">♧</button>
+        </div>
+      </header>
+      <section class="conversation" id="conversation" aria-live="polite">
+        <div class="messages" id="messages"></div>
+      </section>
+      <div class="composer-area">
+        <div class="generation-controls">
+          <label>Reasoning effort <select id="reasoningEffort"><option value="default">Model default</option><option value="none">None</option><option value="minimal">Minimal</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="xhigh">Extra high</option><option value="max">Maximum</option></select></label>
+          <label><input id="webSearch" type="checkbox"> Web search</label>
+          <label><input id="showReasoning" type="checkbox" checked> Reasoning summaries</label>
+        </div>
+        <div class="generation-provider-note" id="generationProviderNote" hidden>For Ollama, True enables thinking and False disables it. Provider-managed web search is unavailable.</div>
+        <form class="composer" id="chatForm">
+          <div id="draftAttachments" class="attachment-list"></div>
+          <textarea id="promptInput" rows="1" placeholder="Message your model…" aria-label="Message"></textarea>
+          <div class="composer-footer">
+            <button class="secondary-button attach-button" id="attachFiles" type="button">＋ Attach files</button>
+            <input id="fileInput" type="file" multiple hidden accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,text/*,.md,.csv,.json,.js,.ts,.py,.yaml,.yml,.xml,.html,.css,.sql,.log">
+            <span class="composer-hint">Enter to send · Shift + Enter for a new line</span>
+            <button class="secondary-button stop-button" id="stopGeneration" type="button" hidden>Stop</button>
+            <button class="send-button" id="sendButton" type="submit" aria-label="Send message">↑</button>
+          </div>
+        </form>
+        <div class="disclaimer">Responses are sent directly to the provider you choose.</div>
+      </div>
+    </main>
+  </div>
+
+  <div class="overlay" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <form class="auth-card" id="authForm">
+      <div class="auth-logo">✳</div>
+      <h1 id="authTitle">Unlock your vault</h1>
+      <p id="authDescription">Enter your password to decrypt your chats and API keys on this device.</p>
+      <label class="field-label" for="passwordInput" id="passwordLabel">Vault password</label>
+      <input class="password-input" id="passwordInput" type="password" autocomplete="current-password" required minlength="8" placeholder="At least 8 characters">
+      <div id="confirmPasswordWrap" hidden>
+        <label class="field-label" for="confirmPassword">Confirm password</label>
+        <input class="password-input" id="confirmPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Enter it again">
+      </div>
+      <button class="primary-button" id="authSubmit" type="submit">Unlock vault</button>
+      <div class="auth-error" id="authError" role="alert"></div>
+      <button class="reset-button" id="resetVault" type="button" hidden>Forgot password? Reset encrypted vault</button>
+      <div class="security-note">Your vault is encrypted in this browser using AES-GCM. Your password is never saved. If you forget it, the encrypted data cannot be recovered.</div>
+    </form>
+  </div>
+
+  <div class="overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="API keys and settings" hidden>
+    <form class="settings-card" id="settingsForm">
+      <div class="settings-heading"><div><h2>API keys &amp; settings</h2><p>Keys are saved only inside your encrypted local vault.</p></div><button class="icon-button" id="closeSettings" type="button" aria-label="Close">×</button></div>
+      <div class="provider-tabs"><button class="provider-tab active" data-provider="openai" type="button">OpenAI</button><button class="provider-tab" data-provider="gemini" type="button">Gemini</button><button class="provider-tab" data-provider="ollama" type="button">Ollama</button></div>
+      <div id="openaiSettings">
+        <label class="source-enable"><input id="openaiEnabled" type="checkbox" checked><span><strong>Enable OpenAI</strong><small>Allow model refreshes and chat requests to OpenAI.</small></span></label>
+        <label class="field-label" for="openaiKey">OpenAI API key</label>
+        <input class="key-input" id="openaiKey" type="password" autocomplete="off" placeholder="sk-…">
+        <p class="small-note">Used with the OpenAI Responses API. API usage is billed by OpenAI.</p>
+      </div>
+      <div id="geminiSettings" hidden>
+        <label class="source-enable"><input id="geminiEnabled" type="checkbox" checked><span><strong>Enable Google Gemini</strong><small>Allow model refreshes and chat requests to Google.</small></span></label>
+        <label class="field-label" for="geminiKey">Google AI API key</label>
+        <input class="key-input" id="geminiKey" type="password" autocomplete="off" placeholder="AIza…">
+        <p class="small-note">Used with the Gemini generateContent API. API usage is subject to Google’s terms.</p>
+      </div>
+      <div id="ollamaSettings" hidden>
+        <label class="source-enable"><input id="ollamaEnabled" type="checkbox"><span><strong>Enable Ollama</strong><small>Off by default. No Ollama requests are made until you enable this source.</small></span></label>
+        <label class="field-label" for="ollamaUrl">Ollama URL</label>
+        <input class="key-input" id="ollamaUrl" type="url" autocomplete="url" value="http://localhost" placeholder="http://localhost">
+        <label class="field-label" for="ollamaPort">Port</label>
+        <input class="key-input" id="ollamaPort" type="number" min="1" max="65535" step="1" value="11434" inputmode="numeric">
+        <label class="field-label" for="ollamaKey">Ollama API key (optional)</label>
+        <input class="key-input" id="ollamaKey" type="password" autocomplete="off" placeholder="Leave empty for a local instance">
+        <p class="small-note">Sent as Authorization: Bearer to the configured endpoint and saved in your encrypted vault. Standard local Ollama needs no key.</p>
+        <p class="small-note" id="ollamaOriginNote"></p>
+      </div>
+      <button class="secondary-button refresh-models" id="refreshModels" type="button">↻ &nbsp; Refresh model list</button>
+      <p class="model-refresh-status" id="modelRefreshStatus" role="status" aria-live="polite"></p>
+      <label class="markdown-setting"><input id="markdownEnabled" type="checkbox" checked><span><strong>Render assistant replies as Markdown</strong><small>Safe rendering; raw HTML is displayed as text.</small></span></label>
+      <div class="settings-actions"><button class="secondary-button" id="cancelSettings" type="button">Cancel</button><button class="primary-button" type="submit">Save settings</button></div>
+    </form>
+  </div>
+  <div class="toast" id="toast" role="status" hidden></div>
+  <script src="attachments.js"></script>
+  <script src="providers.js"></script>
+  <script src="math.js"></script>
+  <script src="markdown.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
